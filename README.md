@@ -1,4 +1,4 @@
-Claro, brother. Te dejo un `README.md` actualizado y más estratégico, para que cualquiera que se sume entienda qué estamos construyendo, qué ya está hecho y cuál es la ruta de crecimiento. [earthquake.usgs](https://earthquake.usgs.gov/earthquakes/feed/v1.0/geojson.php)
+`README.md` actualizado y más estratégico, para que cualquiera que se sume entienda qué estamos construyendo, qué ya está hecho y cuál es la ruta de crecimiento. [earthquake.usgs](https://earthquake.usgs.gov/earthquakes/feed/v1.0/geojson.php)
 
 ```md
 # seismic-alert
