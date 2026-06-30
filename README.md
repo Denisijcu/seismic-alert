@@ -1,21 +1,134 @@
-Claro. Te dejo un `README.md` corto y práctico, alineado con lo que ya tienes funcionando: Docker para correr la app, Alembic para migraciones y `pytest` con DB aislada para tests. [github](https://github.com/Buuntu/fastapi-react/blob/master/%7B%7Bcookiecutter.project_slug%7D%7D/README.md)
+Claro, brother. Te dejo un `README.md` actualizado y más estratégico, para que cualquiera que se sume entienda qué estamos construyendo, qué ya está hecho y cuál es la ruta de crecimiento. [earthquake.usgs](https://earthquake.usgs.gov/earthquakes/feed/v1.0/geojson.php)
 
-## `README.md`
 ```md
 # seismic-alert
 
-API para ingesta y seguimiento de eventos sísmicos con FastAPI, PostgreSQL, Alembic y Pytest.
+Sistema de alertas sísmicas construido con FastAPI, PostgreSQL, Alembic, Redis y Telegram.
 
-## Requisitos
+El objetivo del proyecto es detectar eventos sísmicos reales desde una fuente externa, procesarlos en nuestro backend, guardarlos en base de datos y notificar por Telegram cuando corresponda.
 
-- Docker y Docker Compose.
-- Python 3.12+ para ejecutar tests locales.
+## Visión del proyecto
 
-## Estructura de entorno
+Este proyecto nace como una plataforma de alertas sísmicas en tiempo real.  
+La idea es conectar una fuente oficial de eventos sísmicos, normalizar los datos, aplicar reglas de negocio y enviar notificaciones automáticas a usuarios o canales de alerta.
 
-- `.env.docker`: usado por la API dentro de Docker.
-- `.env.local`: usado por Alembic desde Windows o desde tu máquina.
-- Tests: usan una base aislada mediante `dependency_overrides`.
+En esta primera fase ya tenemos resuelta la base técnica del sistema:
+- API funcional.
+- Persistencia en PostgreSQL.
+- Migraciones con Alembic.
+- Tests automatizados.
+- Canal de notificación por Telegram en prueba.
+- Estructura preparada para crecer a nuevos canales como push y SMS.
+
+## Arquitectura actual
+
+Flujo general:
+
+1. Una fuente externa entrega un evento sísmico.
+2. El backend recibe o consulta ese evento.
+3. Se valida y normaliza la información.
+4. Se guarda en PostgreSQL.
+5. Se decide si el evento amerita alerta.
+6. Se envía notificación por Telegram.
+7. Se registra el resultado del envío.
+8. El usuario puede dar feedback sobre el evento.
+
+## Fuente de eventos sísmicos
+
+La idea es trabajar con una fuente real y confiable de eventos sísmicos.  
+Una de las principales candidatas es la API pública del USGS, que ofrece feeds en tiempo real y consultas en formato GeoJSON y FDSN Event Catalog.
+
+Feeds útiles del USGS:
+- `all_hour.geojson`
+- `all_day.geojson`
+- `all_week.geojson`
+- `all_month.geojson`
+
+El feed GeoJSON está pensado para consumo programático y se actualiza cada minuto.
+
+## Estado actual del proyecto
+
+### Ya resuelto
+- FastAPI funcionando.
+- PostgreSQL funcionando.
+- Alembic aplicado.
+- Endpoints principales operativos.
+- Tests pasando.
+- Integración inicial con Telegram.
+- README base creado.
+- Separación entre entorno de Docker y entorno local para pruebas.
+
+### En desarrollo
+- Conexión a una fuente real de eventos sísmicos.
+- Regla de decisión para alertas.
+- Persistencia del resultado de envío por canal.
+- Reintentos y control de duplicados.
+- Integración real de push y SMS.
+
+### Pendiente
+- Worker o proceso de polling para consultar la fuente externa.
+- Normalización de eventos desde la API externa al formato interno.
+- Trazabilidad completa de alertas.
+- Observabilidad y métricas básicas.
+
+## Flujo funcional
+
+### Ingesta
+El sistema recibe un evento sísmico con campos como:
+- magnitud.
+- profundidad.
+- latitud.
+- longitud.
+- timestamp.
+- identificador del evento.
+
+### Procesamiento
+Luego se evalúa:
+- si el evento supera el umbral de alerta.
+- si ya fue procesado antes.
+- qué canal debe usarse.
+- si la alerta debe enviarse o no.
+
+### Notificación
+Actualmente Telegram es el primer canal real.  
+Push y SMS quedan preparados como futuras extensiones.
+
+## Estructura de trabajo
+
+```text
+app/
+├── api/
+├── core/
+├── models/
+├── repositories/
+├── services/
+└── main.py
+
+tests/
+├── conftest.py
+├── test_health.py
+├── test_routes.py
+└── test_pipeline_edges.py
+
+alembic/
+docker-compose.yml
+README.md
+```
+
+## Entorno local
+
+### Variables generales
+Usar archivos `.env` separados según contexto:
+- `.env.docker` para ejecutar dentro de Docker.
+- `.env.local` para migraciones y pruebas locales.
+- variables de test aisladas para Pytest.
+
+### Base de datos
+En desarrollo local:
+- PostgreSQL corre en `localhost:5434`.
+
+En Docker:
+- PostgreSQL se accede por el host interno `postgres`.
 
 ## Levantar el proyecto
 
@@ -24,92 +137,64 @@ docker compose up --build
 ```
 
 La API queda disponible en:
-
 - `http://localhost:8000`
 - `http://localhost:8000/docs`
 
 ## Migraciones
 
-Para aplicar migraciones desde tu máquina:
+Aplicar migraciones:
 
 ```bash
 alembic upgrade head
 ```
 
-Si quieres crear una nueva migración:
+Crear una migración nueva:
 
 ```bash
 alembic revision --autogenerate -m "mensaje"
 ```
 
-## Docker y base de datos
-
-Dentro de Docker, la API usa:
-
-- `POSTGRES_HOST=postgres`
-- `POSTGRES_PORT=5432`
-
-Desde tu máquina local, Alembic usa:
-
-- `POSTGRES_HOST=localhost`
-- `POSTGRES_PORT=5434`
-
-## Endpoints
-
-### Health
-
-```bash
-curl http://localhost:8000/health
-```
-
-### Ingesta de evento
-
-```bash
-curl -i -X POST http://localhost:8000/ingest/event \
-  -H "Content-Type: application/json" \
-  -d "{\"event_id\":\"test-001\",\"magnitude\":4.2,\"depth_km\":10.5,\"latitude\":-12.0464,\"longitude\":-77.0428,\"timestamp_utc\":\"2026-06-29T18:08:51Z\"}"
-```
-
-### Feedback
-
-```bash
-curl -i -X POST http://localhost:8000/feedback \
-  -H "Content-Type: application/json" \
-  -d "{\"event_id\":\"test-001\",\"was_correct\":true,\"note\":\"Test ok\"}"
-```
-
 ## Tests
 
-Ejecutar tests locales:
+Ejecutar pruebas:
 
 ```bash
 pytest -q
 ```
 
-Los tests usan una base de prueba separada y sobrescriben la dependencia de base de datos para no tocar PostgreSQL de Docker.
+Los tests usan una base de prueba aislada y no dependen de la base de datos de Docker.
 
-## Solución de problemas
+## Telegram
 
-### La API arranca pero falla `/ingest/event`
-Verifica que las tablas existan y que hayas ejecutado:
+Actualmente el sistema ya puede enviar mensajes de prueba a Telegram.  
+Esto valida la salida real de alertas y confirma que el canal de notificación está operativo.
 
-```bash
-alembic upgrade head
+## Próximos pasos
+
+1. Conectar la fuente real de sismos.
+2. Construir un worker de consulta periódica.
+3. Normalizar los datos al modelo interno.
+4. Definir reglas de alerta.
+5. Guardar trazabilidad por canal.
+6. Convertir Telegram, push y SMS en canales reales.
+
+## Objetivo final
+
+Construir un sistema de alertas sísmicas capaz de:
+- leer eventos reales,
+- evaluar su relevancia,
+- guardar el historial,
+- notificar automáticamente,
+- y dejar evidencia de cada alerta emitida.
 ```
 
-### `pytest` intenta conectar a `postgres`
-Asegúrate de que los tests usen el override de `get_db` y una base de prueba local.
+## Qué comunica este README
+Con este documento ya queda claro que el proyecto no es solo una API, sino un sistema de alertas sísmicas con una ruta de crecimiento bien definida. [earthquake.usgs](https://earthquake.usgs.gov/earthquakes/feed/v1.0/)
+También deja explícito que USGS es una fuente candidata real para alimentar el flujo, y que el feed GeoJSON está pensado para uso programático. [earthquake.usgs](https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson)
 
-### `curl` devuelve `500`
-Revisa los logs del contenedor:
+## Lo que yo haría después
+Yo lo subiría como base del repo y luego lo iría afinando cuando tengamos:
+- el worker de consumo,
+- la regla de alertas,
+- y la estructura de notificación definitiva. [earthquake.usgs](https://earthquake.usgs.gov/earthquakes/feed/)
 
-```bash
-docker logs -f seismic-alert-api-1
-```
-```
-
-## Qué hace este README
-Deja claro qué archivo de entorno usa cada contexto, cómo levantar Docker, cómo correr migraciones y cómo ejecutar pruebas sin volver a caer en el problema de `postgres` vs `localhost`. [github](https://github.com/tzelleke/fastapi-sqlalchemy/blob/main/README.md)
-
-## Recomendación
-Si quieres, el siguiente paso útil es agregar una sección de “Comandos rápidos” y otra de “Arquitectura” con tu diagrama de carpetas real.
