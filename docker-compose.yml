@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: seismic-alert-postgres-1
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: seismic
+      POSTGRES_USER: seismic
+      POSTGRES_PASSWORD: seismic123
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: seismic-alert-redis-1
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  api:
+    build: .
+    container_name: seismic-alert-api-1
+    restart: unless-stopped
+    env_file:
+      - .env.docker
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app/app
+    depends_on:
+      - postgres
+      - redis
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  postgres_data:
