@@ -4,6 +4,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from unittest.mock import MagicMock
+
+
 from app.core.db import Base
 from app.core.db import get_db
 from app.main import app
@@ -26,7 +29,8 @@ def setup_test_db():
 
 @pytest.fixture(autouse=True)
 def mock_llm_agents(monkeypatch):
-    """Evita llamadas reales al NIM en los tests."""
+    """Evita llamadas reales al NIM y al USGS poller en los tests."""
+
     def fake_classify_event(event, prompt):
         return json.dumps({"category": "seismic_event", "severity": event.get("magnitude", 0)})
 
@@ -44,6 +48,11 @@ def mock_llm_agents(monkeypatch):
     monkeypatch.setattr("app.orchestration.router.redact_message", fake_redact_message)
     monkeypatch.setattr("app.orchestration.router.dispatch_alert", fake_dispatch_alert)
 
+    # Evita que el lifespan arranque el poller real durante tests
+    monkeypatch.setattr("app.main.poll_usgs", lambda: None)
+    mock_sched = MagicMock()
+    monkeypatch.setattr("app.main.BackgroundScheduler", lambda: mock_sched)
+
 
 @pytest.fixture()
 def client():
@@ -56,7 +65,7 @@ def client():
 
     app.dependency_overrides[get_db] = override_get_db
 
-    with TestClient(app) as c:
-        yield c
+    with TestClient(app) as f:
+        yield f
 
     app.dependency_overrides.clear()

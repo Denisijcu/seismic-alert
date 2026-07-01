@@ -17,5 +17,10 @@ class Settings(BaseModel):
     redis_port: int = int(os.getenv("REDIS_PORT", "6379"))
     telegram_bot_token: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     telegram_chat_id: str = os.getenv("TELEGRAM_CHAT_ID", "")
+    usgs_poll_interval: int = int(os.getenv("USGS_POLL_INTERVAL_SECONDS", "300"))
+    usgs_feed_url: str = os.getenv(
+        "USGS_FEED_URL",
+        "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson"
+    )
 
 settings = Settings()

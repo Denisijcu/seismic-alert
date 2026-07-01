@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
+from app.core.utils import clean_message, extract_severity, strip_json_fences
 from app.models.schemas import Feedback, SeismicEvent
 from app.orchestration.router import run_pipeline
 from app.agents.dispatcher import dispatch_alert
@@ -36,41 +37,11 @@ PROMPTS = {
 }
 
 
-def _strip_json_fences(raw: str) -> str:
-    """Quita los ```json ... ``` fences que algunos LLMs agregan."""
-    if not raw:
-        return raw
-    cleaned = raw.strip()
-    cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
-    cleaned = re.sub(r"\s*```$", "", cleaned)
-    return cleaned.strip()
-
-
-def _extract_severity(classification_raw: str) -> str:
-    """Extrae el campo 'severity' del JSON crudo del classifier, con fallback seguro."""
-    try:
-        cleaned = _strip_json_fences(classification_raw)
-        data = json.loads(cleaned)
-        return data.get("severity", "unknown")
-    except Exception:
-        return "unknown"
-
-
-def _clean_message(message: str) -> str:
-    """Quita comillas envolventes que el LLM a veces agrega por error."""
-    if not message:
-        return message
-    cleaned = message.strip()
-    if len(cleaned) >= 2 and cleaned[0] == '"' and cleaned[-1] == '"':
-        cleaned = cleaned[1:-1]
-    return cleaned
-
-
 @router.post("/ingest/event")
 def ingest_event(event: SeismicEvent, db: Session = Depends(get_db)):
     result = run_pipeline(event.model_dump(), PROMPTS)
 
-    public_message = _clean_message(result.get("message"))
+    public_message = clean_message(result.get("message"))
     if public_message and result.get("status") == "pending_human_review":
         result["message"] = public_message
 
@@ -78,10 +49,10 @@ def ingest_event(event: SeismicEvent, db: Session = Depends(get_db)):
         db,
         {
             **event.model_dump(),
-            "severity": _extract_severity(result.get("classification", "")),
-            "confidence": result.get("validation", {}).get("confidence", 0.0),
-            "action": result.get("status", "monitor"),
-            "rationale": str(result),
+            "severity":       extract_severity(result.get("classification", "")),
+            "confidence":     result.get("validation", {}).get("confidence", 0.0),
+            "action":         result.get("status", "monitor"),
+            "rationale":      str(result),
             "public_message": public_message,
         },
     )
@@ -101,7 +72,7 @@ def approve(event_id: str, db: Session = Depends(get_db)):
         )
 
     dispatched = dispatch_alert(event.public_message or "", ["push", "sms", "telegram"])
-    updated = approve_event(db, event_id, event.public_message or "")
+    approve_event(db, event_id, event.public_message or "")
 
     return {"event_id": event_id, "status": "alert_sent", "dispatch": dispatched}
 
@@ -117,7 +88,7 @@ def reject(event_id: str, reason: str | None = None, db: Session = Depends(get_d
             detail=f"Event is not pending review (current action: {event.action})",
         )
 
-    updated = reject_event(db, event_id, reason)
+    reject_event(db, event_id, reason)
     return {"event_id": event_id, "status": "rejected"}
 
 
@@ -128,14 +99,14 @@ def get_pending_events(db: Session = Depends(get_db)):
         "count": len(events),
         "events": [
             {
-                "event_id": e.event_id,
-                "magnitude": e.magnitude,
-                "depth_km": e.depth_km,
-                "latitude": e.latitude,
-                "longitude": e.longitude,
+                "event_id":      e.event_id,
+                "magnitude":     e.magnitude,
+                "depth_km":      e.depth_km,
+                "latitude":      e.latitude,
+                "longitude":     e.longitude,
                 "timestamp_utc": e.timestamp_utc,
-                "severity": e.severity,
-                "confidence": e.confidence,
+                "severity":      e.severity,
+                "confidence":    e.confidence,
                 "public_message": e.public_message,
             }
             for e in events
