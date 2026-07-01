@@ -1,0 +1,28 @@
+# Archivos de configuración de entorno local y despliegue
+.env.local
+.env.docker
+.env.test
+
+# Archivos de entorno genéricos (por seguridad, añade también estos)
+.env
+.env.*
+!.env.example
+
+# Carpetas de entornos virtuales y dependencias de sistema
+venv/
+env/
+.venv/
+__pycache__/
+*.py[cod]
+
+# Logs y bases de datos locales (si aplica)
+*.log
+*.db
+*.sqlite3
+
+# Carpetas de despliegue y artefactos de construcción
+dist/
+build/
+node_modules/
+.angular/
+.pytest_cache/

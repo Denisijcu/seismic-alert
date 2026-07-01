@@ -2,11 +2,21 @@ from sqlalchemy.orm import Session
 from app.models.db_models import SeismicEventDB, FeedbackDB
 
 def create_event(db: Session, data: dict):
-    event = SeismicEventDB(**data)
-    db.add(event)
-    db.commit()
-    db.refresh(event)
-    return event
+    try:
+        event = SeismicEventDB(**data)
+        db.add(event)
+        db.commit()
+        db.refresh(event)
+        return event
+    except Exception:
+        db.rollback()
+        # Si ya existe, devuelve el registro existente
+        existing = db.query(SeismicEventDB).filter(
+            SeismicEventDB.event_id == data["event_id"]
+        ).first()
+        if existing:
+            return existing
+        raise
 
 def get_event_by_id(db: Session, event_id: str):
     return db.query(SeismicEventDB).filter(SeismicEventDB.event_id == event_id).first()
